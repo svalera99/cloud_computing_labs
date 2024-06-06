@@ -49,7 +49,7 @@ resource "google_pubsub_subscription" "subscription_creation" {
 resource "google_storage_bucket_object" "object_http_listener" {
   name   = "http-source.zip"
   bucket = google_storage_bucket.bucket.name
-  source = "../http-source.zip"
+  source = "../functions/http-source.zip"
 }
 
 resource "google_cloudfunctions2_function" "http-function" {
@@ -85,7 +85,7 @@ resource "google_cloudfunctions2_function" "http-function" {
 resource "google_storage_bucket_object" "object_storage_writer" {
   name   = "storage-writer-source.zip"
   bucket = google_storage_bucket.bucket.name
-  source = "../storage-writer-source.zip"
+  source = "../functions/storage-writer-source.zip"
 }
 
 resource "google_cloudfunctions2_function" "storage-writer-function" {
