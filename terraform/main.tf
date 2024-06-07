@@ -4,12 +4,21 @@ terraform {
       source  = "hashicorp/google"
       version = "4.51.0"
     }
+    google-beta = {
+      version = "~> 5.32.0"
+    }
   }
 }
 
 provider "google" {
   credentials = file(var.credentials_file)
   project = var.project
+}
+
+provider "google-beta" {
+  project     = var.project
+  region      = var.region.region
+  credentials = file(var.credentials_file)
 }
 
 resource "google_storage_bucket" "bucket" {
@@ -19,6 +28,7 @@ resource "google_storage_bucket" "bucket" {
  storage_class = "STANDARD"
 
  uniform_bucket_level_access = true
+ force_destroy = true
 }
 
 resource "google_pubsub_topic" "topic_creation" {
@@ -122,4 +132,69 @@ resource "google_cloudfunctions2_function" "storage-writer-function" {
     pubsub_topic   = google_pubsub_topic.topic_creation.id
     retry_policy   = "RETRY_POLICY_RETRY"
   }
+}
+
+resource "google_project_service" "firestore" {
+  service = "firestore.googleapis.com"
+  project = var.project
+}
+
+resource "google_firestore_database" "default" {
+  provider = google-beta
+  name        = "(default)"
+  project     = var.project
+  location_id = var.region.region
+  type        = "FIRESTORE_NATIVE"
+  deletion_policy = "DELETE"
+
+  depends_on = [
+    google_project_service.firestore
+  ]
+}
+
+resource "google_storage_bucket_object" "firebase_writer" {
+  name   = "firebase-writer-source.zip"
+  bucket = google_storage_bucket.bucket.name
+  source = "../functions/firebase-writer-source.zip"
+}
+
+resource "google_cloudfunctions2_function" "firebase-writer-function" {
+  name        = "my-firebase-writer-function"
+  location    = var.region.region
+  description = "FaaS"
+
+  build_config {
+    runtime     = "python310"
+    entry_point = "write_to_db"
+    environment_variables = {
+      BUILD_CONFIG_TEST = "build_test"
+    }
+    source {
+      storage_source {
+        bucket = google_storage_bucket.bucket.name
+        object = google_storage_bucket_object.firebase_writer.name
+      }
+    }
+  }
+
+   service_config {
+    max_instance_count = 1
+    available_memory   = "128Mi"
+    timeout_seconds    = 60
+    environment_variables = {
+      SERVICE_CONFIG_TEST = "config_test"
+    }
+    all_traffic_on_latest_revision = true
+  }
+  event_trigger {
+    trigger_region = var.region.region
+    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic   = google_pubsub_topic.topic_creation.id
+    retry_policy   = "RETRY_POLICY_RETRY"
+  }
+  depends_on = [
+    google_project_service.firestore,
+    google_storage_bucket_object.firebase_writer,
+    google_firestore_database.default
+  ]
 }
