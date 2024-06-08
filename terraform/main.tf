@@ -146,6 +146,7 @@ resource "google_firestore_database" "default" {
   location_id = var.region.region
   type        = "FIRESTORE_NATIVE"
   deletion_policy = "DELETE"
+  delete_protection_state = "DELETE_PROTECTION_DISABLED"
 
   depends_on = [
     google_project_service.firestore
