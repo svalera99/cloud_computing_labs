@@ -29,10 +29,29 @@ resource "google_storage_bucket" "bucket" {
 
  uniform_bucket_level_access = true
  force_destroy = true
+ versioning {
+    enabled = true
+  }
+}
+
+resource "google_kms_key_ring" "keyring" {
+  name     = "keyring-example"
+  location = "global"
+}
+
+resource "google_kms_crypto_key" "crypto_key" {
+  name            = "crypto-key-example"
+  key_ring        = google_kms_key_ring.keyring.id
+  rotation_period = "7776000s"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_pubsub_topic" "topic_creation" {
   name = "my-topic"
+  kms_key_name = google_kms_crypto_key.crypto_key.id
 
   message_retention_duration = "1200s"
 }
