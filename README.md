@@ -1,8 +1,18 @@
 to use the infrastructure change the path to gcp credentials.
 then in terraform dir simply terraform apply.
-Sometimes the issues with creating the firebase db might pop up, then just run terraform apply once again.
 
-POSSIBLE ISSUES:
-If you destroy the firebase db, GCP seems to have some internal delay
-and thus for a while you won't be able to create one again.
-If you meet error Error: Error creating Database: googleapi: Error 400: Database ID '(default)' is not available in project ''. Please retry in 145 seconds. Then redo command terraform apply after 145 seconds.
+The bug that I've mentioned in the previous lab was related to the fact 
+that firestore can't purge and recreate the DB immediately. That is why
+I decided to split my terraform project in two parts - main part with everythin
+except for firestore db creation and firestore db creation separatly.
+
+Now to run the project 
+```bash
+cd terraform/firestore
+terraform init
+terraform apply
+
+cd ../terraform/main
+terraform init
+terraform apply
+```
